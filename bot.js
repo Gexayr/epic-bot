@@ -42,8 +42,7 @@ function getRandomPrinciples(arr, count) {
 }
 
 // Отправка 10 принципов каждый день в 9 утра
-cron.schedule('*/3 * * * *', () => {
-
+    cron.schedule('0 9 * * *', () => {
     loadPrinciples(); // Перезагружаем principles.json перед отправкой
     const selectedPrinciples = getRandomPrinciples(principles, 10);
     const text = '✅ Ваши 10 принципов на сегодня:\n\n' +
