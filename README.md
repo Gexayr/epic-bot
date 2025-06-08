@@ -182,6 +182,10 @@ TELEGRAM_CHAT_ID=123456789
         -e TELEGRAM_CHAT_ID=123456789 \
         epic-bot
       ```
+      or
+      ```bash
+      docker run -d --name epic-bot --env-file .env epic-bot
+      ```
     - **Flags**:
         - `-d`: Runs in detached mode (background).
         - `--name epic-bot`: Names the container.
