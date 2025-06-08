@@ -27,7 +27,7 @@ function loadPrinciples() {
     try {
         const data = fs.readFileSync(path.resolve('principles.json'), 'utf-8');
         principles = JSON.parse(data).principles || ['Нет данных'];
-        console.log('🟢 principles.json загружен:', principles);
+        console.log('🟢 principles.json загружен:');
     } catch (err) {
         console.error('❌ Ошибка загрузки principles.json:', err.message);
         principles = ['Ошибка: не удалось загрузить принципы'];
@@ -42,7 +42,7 @@ function getRandomPrinciples(arr, count) {
 }
 
 // Отправка 10 принципов каждый день в 9 утра
-    cron.schedule('0 9 * * *', () => {
+    cron.schedule('0 5 * * *', () => {
     loadPrinciples(); // Перезагружаем principles.json перед отправкой
     const selectedPrinciples = getRandomPrinciples(principles, 10);
     const text = '✅ Ваши 10 принципов на сегодня:\n\n' +

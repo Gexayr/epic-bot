@@ -226,6 +226,13 @@ TELEGRAM_CHAT_ID=123456789
         -e TELEGRAM_CHAT_ID=123456789 \
         epic-bot
       ```
+      or
+      ```bash
+      docker stop epic-bot
+      docker rm epic-bot
+      docker build -t epic-bot .
+      docker run -d --name epic-bot --env-file .env epic-bot
+      ```
 
 ### Troubleshooting
 - **Logs**: Check `docker logs -f epic-bot` for errors (e.g., invalid token, chat not found).
