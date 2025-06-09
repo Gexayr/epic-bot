@@ -33,7 +33,7 @@ function loadPrinciples() {
     try {
         const data = fs.readFileSync(path.resolve('principles.json'), 'utf-8');
         principles = JSON.parse(data).principles || ['Нет данных'];
-        console.log('🟢 principles.json загружен:', principles);
+        console.log('🟢 principles.json загружен:');
     } catch (err) {
         console.error('❌ Ошибка загрузки principles.json:', err.message);
         principles = ['Ошибка: не удалось загрузить принципы'];
@@ -47,10 +47,15 @@ function loadImageData() {
     try {
         const data = fs.readFileSync(path.resolve('images.json'), 'utf-8');
         imageData = JSON.parse(data);
-        console.log('🟢 images.json загружен:', imageData);
+        console.log('🟢 images.json загружен:');
     } catch (err) {
         console.error('❌ Ошибка загрузки images.json:', err.message);
-        imageData = { fragments: ['epic scene'], styles: ['fantasy'] };
+        imageData = {
+            fragments: [
+                { subject: "A lone hero", action: "stands tall", setting: "on a cliff" }
+            ],
+            styles: ['fantasy']
+        };
     }
 }
 loadImageData();
@@ -61,10 +66,17 @@ function getRandomElements(arr, count) {
     return shuffled.slice(0, Math.min(count, arr.length));
 }
 
-// Функция ля инициации генерации изображения через Freepik API
-async function initiateImageGeneration(fragment, style) {
+// Функция для создания случайного промпта из фрагментов
+function createRandomPrompt(fragments) {
+    const randomSubject = getRandomElements(fragments, 1)[0].subject;
+    const randomAction = getRandomElements(fragments, 1)[0].action;
+    const randomSetting = getRandomElements(fragments, 1)[0].setting;
+    return `${randomSubject} ${randomAction} ${randomSetting}, vibrant colors, uplifting mood, cinematic lighting, epic composition`;
+}
+
+// Функция для инициации генерации изображения через Freepik API
+async function initiateImageGeneration(prompt, style) {
     try {
-        const prompt = `${fragment}, vibrant colors, uplifting mood, cinematic lighting, epic composition`;
         const response = await axios.post(
             'https://api.freepik.com/v1/ai/text-to-image/imagen3',
             {
@@ -101,6 +113,7 @@ async function initiateImageGeneration(fragment, style) {
 // Функция для проверки статуса и получения URL изображения
 async function checkImageStatus(taskId) {
     try {
+        console.log(freepikApiKey)
         const response = await axios.get(
             `https://api.freepik.com/v1/ai/text-to-image/imagen3/${taskId}`,
             {
@@ -109,6 +122,8 @@ async function checkImageStatus(taskId) {
                 }
             }
         );
+        console.log("response.data")
+        console.log(response.data)
         const status = response.data.data.status;
         const generated = response.data.data.generated;
         console.log('🟢 Статус задачи:', status);
@@ -125,8 +140,8 @@ async function checkImageStatus(taskId) {
 }
 
 // Функция для генерации и получения изображения с ожиданием
-async function generateMotivationalImage(fragment, style) {
-    const taskId = await initiateImageGeneration(fragment, style);
+async function generateMotivationalImage(prompt, style) {
+    const taskId = await initiateImageGeneration(prompt, style);
     if (!taskId) return null;
 
     // Ожидаем завершения генерации (максимум 30 секунд)
@@ -139,41 +154,41 @@ async function generateMotivationalImage(fragment, style) {
         await new Promise(resolve => setTimeout(resolve, 5000)); // Ждем 5 секунд
         attempts++;
     }
-    console.error('❌ Время ожидания генерации истекло для:', fragment);
+    console.error('❌ Время ожидания генерации истекло для:', prompt);
     return null;
 }
 
 // Отправка принципов списком и 4 мотивационных изображений каждый день в 9 утра
 // cron.schedule('0 5 * * *', async () => {
-cron.schedule('* * * * *', async () => {
+cron.schedule('*/2 * * * *', async () => {
     loadPrinciples(); // Перезагружаем principles.json
     loadImageData(); // Перезагружаем images.json
-    const selectedPrinciples = getRandomElements(principles, 4); // Выбираем 4 принципа
-    const selectedFragments = getRandomElements(imageData.fragments, 4); // Выбираем 4 фрагмента
+    const selectedPrinciples = getRandomElements(principles, 10);
 
     // Отправляем принципы списком
     const principlesText = '✅ Ваши принципы на сегодня:\n\n' +
         selectedPrinciples.map((p, i) => `${i + 1}. ${p}`).join('\n');
     try {
         await bot.sendMessage(chatId, principlesText);
-        console.log('🟢 Принципы отправлены списком');
+        console.log('🟢 Принципы отправлены');
     } catch (err) {
         console.error('❌ Ошибка отправки принципов:', err.message);
     }
 
     // Генерируем и отправляем 4 изображения
-    console.log('🟢 Отправка 4 мотивационных изображений в 9:00');
+    console.log('🟢 Отправка 4 изображений в 9:00');
+    console.log("selectedPrinciples",selectedPrinciples)
     for (let i = 0; i < 4; i++) {
-        const fragment = selectedFragments[i];
+        const prompt = createRandomPrompt(imageData.fragments); // Создаем случайный промпт
         const style = getRandomElements(imageData.styles, 1)[0]; // Случайный стиль
-        const principle = selectedPrinciples[i];
-        const imageUrl = await generateMotivationalImage(fragment, style);
+        const principle = getRandomElements(selectedPrinciples, 1)[0];
+        const imageUrl = await generateMotivationalImage(prompt, style);
         if (imageUrl) {
             try {
                 await bot.sendPhoto(chatId, imageUrl, {
                     caption: `✅ ${principle}`
                 });
-                console.log(`✅ Отправлено изображение: ${fragment} (стиль: ${style}) с текстом: ${principle}`);
+                console.log(`✅ Отправлено изображение: ${prompt} (стиль: ${style}) с текстом: ${principle}`);
             } catch (err) {
                 console.error('❌ Ошибка отправки изображения:', err.message);
             }
