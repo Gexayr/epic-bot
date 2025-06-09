@@ -1,0 +1,61 @@
+{
+  "fragments": [
+    {
+      "subject": "A fearless warrior",
+      "action": "stands on a battlefield at sunset, sword in hand",
+      "setting": "facing the horizon with unwavering resolve"
+    },
+    {
+      "subject": "A charismatic leader",
+      "action": "addresses a roaring crowd from a high balcony",
+      "setting": "city lights sparkling below under a starry sky"
+    },
+    {
+      "subject": "A lone knight",
+      "action": "kneels in a misty forest, armor gleaming under moonlight",
+      "setting": "holding a glowing sword"
+    },
+    {
+      "subject": "A defiant hero",
+      "action": "stands on a crumbling fortress wall, flag in hand",
+      "setting": "as storm clouds gather overhead"
+    },
+    {
+      "subject": "A weary traveler",
+      "action": "reaches the peak of a mountain at dawn",
+      "setting": "gazing at a golden valley below, filled with hope"
+    },
+    {
+      "subject": "A brave captain",
+      "action": "stands at the helm of a ship",
+      "setting": "facing a raging sea storm, with lightning illuminating the waves"
+    },
+    {
+      "subject": "A lone archer",
+      "action": "stands on a hill, bow drawn",
+      "setting": "silhouetted against a fiery sunset, ready to defend their land"
+    },
+    {
+      "subject": "A powerful sorceress",
+      "action": "raises her staff on a glowing rune-covered platform",
+      "setting": "with a cosmic vortex swirling above"
+    },
+    {
+      "subject": "A battle-scarred general",
+      "action": "rallies their troops in a rain-soaked valley",
+      "setting": "holding a banner high under a turbulent sky"
+    },
+    {
+      "subject": "A young hero",
+      "action": "stands at the edge of a glowing portal, sword raised",
+      "setting": "ready to step into an unknown world"
+    }
+  ],
+  "styles": [
+    "realism",
+    "fantasy",
+    "cinematic",
+    "surrealism",
+    "epic"
+  ]
+}

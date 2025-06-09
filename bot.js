@@ -2,11 +2,13 @@ import TelegramBot from 'node-telegram-bot-api';
 import cron from 'node-cron';
 import fs from 'fs';
 import path from 'path';
-import 'dotenv/config'; // Загружаем переменные из .env
+import 'dotenv/config';
+import axios from 'axios';
 
 // Проверяем переменные окружения
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const chatId = process.env.TELEGRAM_CHAT_ID;
+const freepikApiKey = process.env.FREEPIK_API_KEY;
 
 if (!token) {
     console.error('❌ Ошибка: TELEGRAM_BOT_TOKEN не задан');
@@ -15,6 +17,10 @@ if (!token) {
 if (!chatId) {
     console.error('❌ Ошибка: TELEGRAM_CHAT_ID не задан');
     console.log('ℹ️ Напишите боту в Telegram, чтобы узнать chatId');
+    process.exit(1);
+}
+if (!freepikApiKey) {
+    console.error('❌ Ошибка: FREEPIK_API_KEY не задан');
     process.exit(1);
 }
 
@@ -27,7 +33,7 @@ function loadPrinciples() {
     try {
         const data = fs.readFileSync(path.resolve('principles.json'), 'utf-8');
         principles = JSON.parse(data).principles || ['Нет данных'];
-        console.log('🟢 principles.json загружен:');
+        console.log('🟢 principles.json загружен:', principles);
     } catch (err) {
         console.error('❌ Ошибка загрузки principles.json:', err.message);
         principles = ['Ошибка: не удалось загрузить принципы'];
@@ -35,21 +41,144 @@ function loadPrinciples() {
 }
 loadPrinciples();
 
-// Функция для выбора 10 случайных принципов
-function getRandomPrinciples(arr, count) {
+// Загружаем images.json
+let imageData;
+function loadImageData() {
+    try {
+        const data = fs.readFileSync(path.resolve('images.json'), 'utf-8');
+        imageData = JSON.parse(data);
+        console.log('🟢 images.json загружен:', imageData);
+    } catch (err) {
+        console.error('❌ Ошибка загрузки images.json:', err.message);
+        imageData = { fragments: ['epic scene'], styles: ['fantasy'] };
+    }
+}
+loadImageData();
+
+// Функция для выбора случайных элементов
+function getRandomElements(arr, count) {
     const shuffled = arr.slice().sort(() => Math.random() - 0.5);
     return shuffled.slice(0, Math.min(count, arr.length));
 }
 
-// Отправка 10 принципов каждый день в 9 утра
-    cron.schedule('0 5 * * *', () => {
-    loadPrinciples(); // Перезагружаем principles.json перед отправкой
-    const selectedPrinciples = getRandomPrinciples(principles, 10);
-    const text = '✅ Ваши 10 принципов на сегодня:\n\n' +
+// Функция ля инициации генерации изображения через Freepik API
+async function initiateImageGeneration(fragment, style) {
+    try {
+        const prompt = `${fragment}, vibrant colors, uplifting mood, cinematic lighting, epic composition`;
+        const response = await axios.post(
+            'https://api.freepik.com/v1/ai/text-to-image/imagen3',
+            {
+                prompt: prompt,
+                num_images: 1,
+                aspect_ratio: 'square_1_1',
+                styling: {
+                    style: style,
+                    effects: {
+                        color: 'vibrant',
+                        lightning: 'cinematic',
+                        framing: 'cinematic'
+                    }
+                },
+                person_generation: 'allow_adult',
+                safety_settings: 'block_low_and_above'
+            },
+            {
+                headers: {
+                    'x-freepik-api-key': freepikApiKey,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        const taskId = response.data.data.task_id;
+        console.log('🟢 Задача генерации создана, task_id:', taskId);
+        return taskId;
+    } catch (err) {
+        console.error('❌ Ошибка инициации генерации изображения:', err.message);
+        return null;
+    }
+}
+
+// Функция для проверки статуса и получения URL изображения
+async function checkImageStatus(taskId) {
+    try {
+        const response = await axios.get(
+            `https://api.freepik.com/v1/ai/text-to-image/imagen3/${taskId}`,
+            {
+                headers: {
+                    'x-freepik-api-key': freepikApiKey
+                }
+            }
+        );
+        const status = response.data.data.status;
+        const generated = response.data.data.generated;
+        console.log('🟢 Статус задачи:', status);
+        if (status === 'COMPLETED' && generated.length > 0) {
+            const imageUrl = generated[0];
+            console.log('🟢 Изображение готово:', imageUrl);
+            return imageUrl;
+        }
+        return null;
+    } catch (err) {
+        console.error('❌ Ошибка проверки статуса задачи:', err.message);
+        return null;
+    }
+}
+
+// Функция для генерации и получения изображения с ожиданием
+async function generateMotivationalImage(fragment, style) {
+    const taskId = await initiateImageGeneration(fragment, style);
+    if (!taskId) return null;
+
+    // Ожидаем завершения генерации (максимум 30 секунд)
+    let attempts = 0;
+    const maxAttempts = 6; // 6 попыток по 5 секунд = 30 секунд
+    while (attempts < maxAttempts) {
+        const imageUrl = await checkImageStatus(taskId);
+        if (imageUrl) return imageUrl;
+        console.log('⏳ Ожидание генерации изображения, попытка', attempts + 1);
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Ждем 5 секунд
+        attempts++;
+    }
+    console.error('❌ Время ожидания генерации истекло для:', fragment);
+    return null;
+}
+
+// Отправка принципов списком и 4 мотивационных изображений каждый день в 9 утра
+// cron.schedule('0 5 * * *', async () => {
+cron.schedule('* * * * *', async () => {
+    loadPrinciples(); // Перезагружаем principles.json
+    loadImageData(); // Перезагружаем images.json
+    const selectedPrinciples = getRandomElements(principles, 4); // Выбираем 4 принципа
+    const selectedFragments = getRandomElements(imageData.fragments, 4); // Выбираем 4 фрагмента
+
+    // Отправляем принципы списком
+    const principlesText = '✅ Ваши принципы на сегодня:\n\n' +
         selectedPrinciples.map((p, i) => `${i + 1}. ${p}`).join('\n');
-    bot.sendMessage(chatId, text)
-        .then(() => console.log('✅ Отправлено 10 принципов в 9:00'))
-        .catch(err => console.error('❌ Ошибка отправки:', err.message));
+    try {
+        await bot.sendMessage(chatId, principlesText);
+        console.log('🟢 Принципы отправлены списком');
+    } catch (err) {
+        console.error('❌ Ошибка отправки принципов:', err.message);
+    }
+
+    // Генерируем и отправляем 4 изображения
+    console.log('🟢 Отправка 4 мотивационных изображений в 9:00');
+    for (let i = 0; i < 4; i++) {
+        const fragment = selectedFragments[i];
+        const style = getRandomElements(imageData.styles, 1)[0]; // Случайный стиль
+        const principle = selectedPrinciples[i];
+        const imageUrl = await generateMotivationalImage(fragment, style);
+        if (imageUrl) {
+            try {
+                await bot.sendPhoto(chatId, imageUrl, {
+                    caption: `✅ ${principle}`
+                });
+                console.log(`✅ Отправлено изображение: ${fragment} (стиль: ${style}) с текстом: ${principle}`);
+            } catch (err) {
+                console.error('❌ Ошибка отправки изображения:', err.message);
+            }
+        }
+    }
 });
 
 console.log('🟢 Бот запущен');
