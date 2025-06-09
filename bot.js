@@ -159,8 +159,7 @@ async function generateMotivationalImage(prompt, style) {
 }
 
 // Отправка принципов списком и 4 мотивационных изображений каждый день в 9 утра
-// cron.schedule('0 5 * * *', async () => {
-cron.schedule('*/2 * * * *', async () => {
+cron.schedule('0 5 * * *', async () => {
     loadPrinciples(); // Перезагружаем principles.json
     loadImageData(); // Перезагружаем images.json
     const selectedPrinciples = getRandomElements(principles, 10);
