@@ -49,6 +49,46 @@
       "subject": "A young hero",
       "action": "stands at the edge of a glowing portal, sword raised",
       "setting": "ready to step into an unknown world"
+    },
+    {
+      "subject": "A victorious general",
+      "action": "raises a gleaming sword before a cheering army",
+      "setting": "a vast plain stretching to the distant mountains"
+    },
+    {
+      "subject": "A charismatic orator",
+      "action": "delivers an impassioned speech to a captivated throng",
+      "setting": "a grand amphitheater under a setting sun"
+    },
+    {
+      "subject": "An ancient king",
+      "action": "leads a mighty host into a decisive battle",
+      "setting": "a desolate valley echoing with war cries"
+    },
+    {
+      "subject": "An ancient sorcerer",
+      "action": "casts a powerful spell in a hidden chamber",
+      "setting": "ancient runes glowing on the walls"
+    },
+    {
+      "subject": "A clever rogue",
+      "action": "silently infiltrates a heavily guarded fortress",
+      "setting": "shadows stretching long in the moonlit courtyard"
+    },
+    {
+      "subject": "A mystical healer",
+      "action": "tends to a wounded beast in a sun-dappled grove",
+      "setting": "fragrant herbs laid out on mossy stones"
+    },
+    {
+      "subject": "A seasoned explorer",
+      "action": "discovers a lost artifact in a forgotten tomb",
+      "setting": "dust motes dancing in the single shaft of light"
+    },
+    {
+      "subject": "A young inventor",
+      "action": "launches a fantastical contraption into the sky",
+      "setting": "a bustling cityscape far below"
     }
   ],
   "styles": [
