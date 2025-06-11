@@ -77,10 +77,20 @@ function createRandomPrompt(fragments) {
 // Функция для инициации генерации изображения через Freepik API
 async function initiateImageGeneration(prompt, style) {
     try {
+        /*const epStyle = [
+            "realism",
+            "fantasy",
+            "cinematic",
+            "surrealism",
+            "epic"
+        ][Math.floor(Math.random() * 5)];
+        */
+
         const response = await axios.post(
             'https://api.freepik.com/v1/ai/text-to-image/imagen3',
             {
                 prompt: prompt,
+                /*prompt: `${prompt}, ${epStyle} aesthetic`,*/
                 num_images: 1,
                 aspect_ratio: 'square_1_1',
                 styling: {
@@ -91,8 +101,8 @@ async function initiateImageGeneration(prompt, style) {
                         framing: 'cinematic'
                     }
                 },
-                person_generation: 'allow_adult',
-                safety_settings: 'block_low_and_above'
+                person_generation: 'allow_all',
+                safety_settings: 'block_none'
             },
             {
                 headers: {
@@ -122,8 +132,6 @@ async function checkImageStatus(taskId) {
                 }
             }
         );
-        console.log("response.data")
-        console.log(response.data)
         const status = response.data.data.status;
         const generated = response.data.data.generated;
         console.log('🟢 Статус задачи:', status);
@@ -142,6 +150,8 @@ async function checkImageStatus(taskId) {
 // Функция для генерации и получения изображения с ожиданием
 async function generateMotivationalImage(prompt, style) {
     const taskId = await initiateImageGeneration(prompt, style);
+    // await new Promise(resolve => setTimeout(resolve, 2000)); // Ждем 2 секунд
+
     if (!taskId) return null;
 
     // Ожидаем завершения генерации (максимум 30 секунд)

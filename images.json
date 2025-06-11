@@ -92,10 +92,13 @@
     }
   ],
   "styles": [
-    "realism",
+    "dark",
+    "digital-art",
     "fantasy",
-    "cinematic",
-    "surrealism",
-    "epic"
+    "photo",
+    "painting",
+    "cyberpunk",
+    "surreal",
+    "art-nouveau"
   ]
 }
