@@ -4,50 +4,93 @@ import fs from 'fs';
 import path from 'path';
 import 'dotenv/config';
 import axios from 'axios';
+import mysql from 'mysql2/promise';
 
 // Проверяем переменные окружения
 const token = process.env.TELEGRAM_BOT_TOKEN;
-const chatId = process.env.TELEGRAM_CHAT_ID;
 const freepikApiKey = process.env.FREEPIK_API_KEY;
+const dbHost = process.env.MYSQL_DB_HOST || 'localhost';
+const dbName = process.env.MYSQL_DATABASE || 'telegram_bot_db';
+const dbUser = process.env.MYSQL_USER || 'root';
+const dbPassword = process.env.MYSQL_PASSWORD || 'password';
+const languages = [
+    "am", "ru", "en"
+];
 
 if (!token) {
     console.error('❌ Ошибка: TELEGRAM_BOT_TOKEN не задан');
     process.exit(1);
 }
-if (!chatId) {
-    console.error('❌ Ошибка: TELEGRAM_CHAT_ID не задан');
-    console.log('ℹ️ Напишите боту в Telegram, чтобы узнать chatId');
-    process.exit(1);
-}
+
 if (!freepikApiKey) {
     console.error('❌ Ошибка: FREEPIK_API_KEY не задан');
     process.exit(1);
 }
 
-// Инициализируем бота без polling
-const bot = new TelegramBot(token, { polling: false });
+// Инициализируем бота
+const bot = new TelegramBot(token, { polling: true });
+
+let connection; // Переменная для хранения соединения с базой данных
+
+async function initializeDatabase() {
+    try {
+
+        connection = await mysql.createConnection({
+            host: dbHost,
+            user: dbUser,
+            password: dbPassword,
+            database: dbName
+        });
+        console.log('🟢 Соединение с базой данных MySQL установлено.');
+    } catch (error) {
+        console.log(
+            "host:" , dbHost,
+            "user:" , dbUser,
+            "password:" , dbPassword,
+            "database:" , dbName
+        )
+        console.error('❌ Ошибка инициализации базы данных MySQL:', error.message);
+        process.exit(1);
+    }
+}
 
 // Загружаем principles.json
-let principles;
-function loadPrinciples() {
+let principles = [];
+let allPrinciples = [];
+async function loadPrinciples() {
     try {
-        const data = fs.readFileSync(path.resolve('principles.json'), 'utf-8');
-        principles = JSON.parse(data).principles || ['Нет данных'];
-        console.log('🟢 principles.json загружен:');
+        // const data = fs.readFileSync(path.resolve('principles.json'), 'utf-8');
+        // principles = JSON.parse(data).principles || ['Нет данных'];
+        // console.log('🟢 principles.json загружен:');
+
+        [allPrinciples] = await connection.execute('SELECT * FROM principles');
+        principles['en'] = allPrinciples.map(row => row.text_en);
+        principles['ru'] = allPrinciples.map(row => row.text_ru);
+        principles['am'] = allPrinciples.map(row => row.text_am);
+
     } catch (err) {
         console.error('❌ Ошибка загрузки principles.json:', err.message);
         principles = ['Ошибка: не удалось загрузить принципы'];
     }
 }
-loadPrinciples();
+// loadPrinciples();
 
-// Загружаем images.json
-let imageData;
-function loadImageData() {
+let imageData = { fragments: [], styles: [] };
+
+async function loadImageData() {
     try {
-        const data = fs.readFileSync(path.resolve('images.json'), 'utf-8');
-        imageData = JSON.parse(data);
-        console.log('🟢 images.json загружен:');
+        // const data = fs.readFileSync(path.resolve('images.json'), 'utf-8');
+        // imageData = JSON.parse(data);
+        // console.log('🟢 images.json загружен:');
+
+        const [fragments] = await connection.execute('SELECT subject, action, setting FROM image_fragments');
+        const [styles] = await connection.execute('SELECT style_name FROM image_styles');
+
+        imageData.fragments = fragments;
+        imageData.styles = styles.map(row => row.style_name);
+
+        console.log(imageData)
+        console.log('🟢 Данные изображений загружены');
     } catch (err) {
         console.error('❌ Ошибка загрузки images.json:', err.message);
         imageData = {
@@ -58,7 +101,7 @@ function loadImageData() {
         };
     }
 }
-loadImageData();
+// loadImageData();
 
 // Функция для выбора случайных элементов
 function getRandomElements(arr, count) {
@@ -101,7 +144,7 @@ async function initiateImageGeneration(prompt, style) {
                         framing: 'cinematic'
                     }
                 },
-                person_generation: 'allow_all',
+                person_generation: 'allow_adult',
                 safety_settings: 'block_none'
             },
             {
@@ -170,39 +213,171 @@ async function generateMotivationalImage(prompt, style) {
 
 // Отправка принципов списком и 4 мотивационных изображений каждый день в 9 утра
 cron.schedule('0 5 * * *', async () => {
-    loadPrinciples(); // Перезагружаем principles.json
-    loadImageData(); // Перезагружаем images.json
-    const selectedPrinciples = getRandomElements(principles, 10);
 
-    // Отправляем принципы списком
-    const principlesText = '✅ Ваши принципы на сегодня:\n\n' +
-        selectedPrinciples.map((p, i) => `${i + 1}. ${p}`).join('\n');
-    try {
-        await bot.sendMessage(chatId, principlesText);
-        console.log('🟢 Принципы отправлены');
-    } catch (err) {
-        console.error('❌ Ошибка отправки принципов:', err.message);
+    const [users] = await connection.execute('SELECT chat_id, lang FROM users WHERE is_active = TRUE');
+    if (users.length === 0) {
+        console.log('ℹ️ Нет активных пользователей для рассылки.');
+        return;
+    }
+
+    await loadPrinciples();
+    await loadImageData();
+    let header = `Ваши советы  на сегодня:`;
+    let principlesText = [];
+    let selectedPrinciples = [];
+
+    for (const lang of languages) {
+        selectedPrinciples[lang] = getRandomElements(principles[lang], 10);
+        header = getLocalizedHeader(lang)
+        principlesText[lang] = `✅ ${header}\n\n` +
+        selectedPrinciples[lang].map((p, i) => `${i + 1}. ${p}`).join('\n');
+    }
+
+    await connection.execute(
+        'INSERT INTO principles_log (text) VALUES (?) ',
+        [principlesText['en']]
+    );
+
+    for (const user of users) {
+        try {
+            const userLanguage = user.lang || 'en';
+            await bot.sendMessage(user.chat_id, principlesText[userLanguage]);
+            console.log(`🟢 Принципы отправлены пользователю ${user.chat_id}`);
+        } catch (err) {
+            console.error(`❌ Ошибка отправки принципов пользователю ${user.chat_id}:`, err.message);
+            // Если ошибка связана с заблокированным ботом, деактивируем пользователя
+            if (err.response && err.response.statusCode === 403) {
+                console.log(`Пользователь ${user.chat_id} заблокировал бота. Деактивация.`);
+                await connection.execute('UPDATE users SET is_active = FALSE WHERE chat_id = ?', [user.chat_id]);
+            }
+        }
     }
 
     // Генерируем и отправляем 4 изображения
     console.log('🟢 Отправка 4 изображений в 9:00');
-    console.log("selectedPrinciples",selectedPrinciples)
     for (let i = 0; i < 4; i++) {
         const prompt = createRandomPrompt(imageData.fragments); // Создаем случайный промпт
         const style = getRandomElements(imageData.styles, 1)[0]; // Случайный стиль
-        const principle = getRandomElements(selectedPrinciples, 1)[0];
         const imageUrl = await generateMotivationalImage(prompt, style);
         if (imageUrl) {
-            try {
-                await bot.sendPhoto(chatId, imageUrl, {
-                    caption: `✅ ${principle}`
-                });
-                console.log(`✅ Отправлено изображение: ${prompt} (стиль: ${style}) с текстом: ${principle}`);
-            } catch (err) {
-                console.error('❌ Ошибка отправки изображения:', err.message);
+            await connection.execute(
+                'INSERT INTO images_prompt (prompt, style) VALUES (?, ?) ',
+                [prompt, style]
+            );
+
+            for (const user of users) {
+                try {
+                    const userLanguage = user.lang || 'en';
+                    const shuffledPrinciples = getRandomElements(selectedPrinciples[userLanguage], 4);
+                    const principle = shuffledPrinciples[i];
+
+                    await bot.sendPhoto(user.chat_id, imageUrl, {
+                        caption: `✅ ${principle}`
+                    });
+                    console.log(`✅ Отправлено изображение пользователю ${user.chat_id}: ${prompt} (стиль: ${style}) с текстом: ${principle}`);
+                } catch (err) {
+                    console.error(`❌ Ошибка отправки изображения пользователю ${user.chat_id}:`, err.message);
+                    if (err.response && err.response.statusCode === 403) {
+                        console.log(`Пользователь ${user.chat_id} заблокировал бота. Деактивация.`);
+                        await connection.execute('UPDATE users SET is_active = FALSE WHERE chat_id = ?', [user.chat_id]);
+                    }
+                }
             }
         }
     }
 });
+
+// Запускаем инициализацию базы данных и бота
+initializeDatabase().then(() => {
+    console.log('🟢 Бот запущен и готов к работе.');
+}).catch(err => {
+    console.error('Критическая ошибка при запуске бота:', err);
+    process.exit(1);
+});
+
+const getLocalizedHeader = (languageCode) => {
+    const headers = {
+        'ru': 'Ваши советы  на сегодня:',
+        'en': 'Your advices for today:',
+        'am': 'Խորհուրդներ այսօրվա համար:'
+    };
+    return headers[languageCode] || headers['en']; // Default to Russian if language not found
+};
+
+// Обработчик команды /start
+bot.onText(/\/start/, async (msg) => {
+    if (!connection) {
+        console.error('❌ Попытка добавить пользователя до установки соединения с БД.');
+        await bot.sendMessage(msg.chat.id, 'Извините, бот еще не готов. Пожалуйста, попробуйте через минуту.');
+        return;
+    }
+
+    const chatId = msg.chat.id.toString();
+    const username = msg.from.username || null;
+    const firstName = msg.from.first_name || null;
+    const lastName = msg.from.last_name || null;
+    const info = msg || null;
+
+    const options = {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: '⚙️ Settings / Настройки', callback_data: 'settings' }
+                ]
+            ]
+        }
+    };
+
+    try {
+        await connection.execute(
+            'INSERT INTO users (chat_id, username, first_name, last_name, info, is_active) VALUES (?, ?, ?, ?, ?, TRUE) ' +
+            'ON DUPLICATE KEY UPDATE username = ?, first_name = ?, last_name = ?, info = ?, is_active = TRUE',
+            [chatId, username, firstName, lastName, info, username, firstName, lastName, info]
+        );
+        await bot.sendMessage(chatId,
+            'Hi! I\'m a bot that will send you daily tips and motivational images. Welcome!',
+            options);
+        console.log(`🟢 Новый пользователь зарегистрирован/активирован: ${chatId}`);
+    } catch (error) {
+        console.error('❌ Ошибка при добавлении пользователя:', error.message);
+        await bot.sendMessage(chatId, 'Произошла ошибка при регистрации. Пожалуйста, попробуйте еще раз.');
+    }
+});
+
+bot.on('callback_query', async (callbackQuery) => {
+    const msg = callbackQuery.message;
+    const data = callbackQuery.data;
+    // Обработка настройки
+    if (data === 'settings') {
+        const languageKeyboard = {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '🇷🇺 Русский', callback_data: 'ru' },
+                        { text: '🇦🇲 Հայերեն', callback_data: 'am' },
+                        { text: '🇬🇧 English', callback_data: 'en' }
+                    ]
+                ]
+            }
+        };
+
+        await bot.sendMessage(msg.chat.id, 'Пожалуйста, выберите язык | Խնդրում ենք ընտրել լեզուն: | Please select a language', languageKeyboard);
+    }
+
+    if (data === 'ru') {
+        await bot.sendMessage(msg.chat.id, 'Вы выбрали русский язык 🇷🇺');
+    } else if (data === 'am') {
+        await bot.sendMessage(msg.chat.id, 'Դուք ընտրեցիք հայերեն 🇦🇲');
+    } else if (data === 'en') {
+        await bot.sendMessage(msg.chat.id, 'You selected English 🇬🇧');
+    }
+
+    if (languages.includes(data)) {
+        await connection.execute('UPDATE users SET lang = ? WHERE chat_id = ?', [data, msg.chat.id.toString()]);
+    }
+
+    await bot.answerCallbackQuery(callbackQuery.id);
+});
+
 
 console.log('🟢 Бот запущен');

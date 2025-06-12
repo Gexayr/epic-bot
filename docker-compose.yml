@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Service for your Node.js Telegram bot
+  bot:
+    build:
+      context: .
+    container_name: telegram-bot
+    restart: always
+    env_file:
+      - .env
+    networks:
+      - bot_network
+
+  # Service for the MySQL database
+  db:
+    image: mysql:8
+    container_name: mysql-database
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    env_file:
+      - .env
+    ports:
+      - "33106:3306"
+    volumes:
+      - ./mysql:/var/lib/mysql
+    networks:
+      - bot_network
+
+volumes:
+  mysql_data:
+
+networks:
+  bot_network:
+    driver: bridge
