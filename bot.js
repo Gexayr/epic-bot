@@ -320,7 +320,7 @@ const getLocalizedHeader = (languageCode) => {
 bot.onText(/\/start/, async (msg) => {
     if (!connection) {
         console.error('❌ Попытка добавить пользователя до установки соединения с БД.');
-        await bot.sendMessage(msg.chat.id, 'Извините, бот еще не готов. Пожалуйста, попробуйте через минуту.');
+        await bot.sendMessage(msg.chat.id, 'Sorry, the bot is not ready yet. Please try again in a minute.');
         return;
     }
 
@@ -353,7 +353,7 @@ bot.onText(/\/start/, async (msg) => {
         console.log(`🟢 Новый пользователь зарегистрирован/активирован: ${chatId}`);
     } catch (error) {
         console.error('❌ Ошибка при добавлении пользователя:', error.message);
-        await bot.sendMessage(chatId, 'Произошла ошибка при регистрации. Пожалуйста, попробуйте еще раз.');
+        await bot.sendMessage(chatId, 'There was an error registering. Please try again.');
     }
 });
 
