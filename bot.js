@@ -74,7 +74,6 @@ async function loadPrinciples() {
         // const data = fs.readFileSync(path.resolve('principles.json'), 'utf-8');
         // principles = JSON.parse(data).principles || ['Нет данных'];
         // console.log('🟢 principles.json загружен:');
-        await checkConnection();
         [allPrinciples] = await connection.execute('SELECT * FROM principles');
         principles['en'] = allPrinciples.map(row => row.text_en);
         principles['ru'] = allPrinciples.map(row => row.text_ru);
@@ -300,12 +299,12 @@ cron.schedule('0 5 * * *', async () => {
 });
 
 // Запускаем инициализацию базы данных и бота
-initializeDatabase().then(() => {
-    console.log('🟢 Бот запущен и готов к работе.');
-}).catch(err => {
-    console.error('Критическая ошибка при запуске бота:', err);
-    process.exit(1);
-});
+// initializeDatabase().then(() => {
+//     console.log('🟢 Бот запущен и готов к работе.');
+// }).catch(err => {
+//     console.error('Критическая ошибка при запуске бота:', err);
+//     process.exit(1);
+// });
 
 const getLocalizedHeader = (languageCode) => {
     const headers = {
@@ -318,6 +317,7 @@ const getLocalizedHeader = (languageCode) => {
 
 // Обработчик команды /start
 bot.onText(/\/start/, async (msg) => {
+    await checkConnection();
     if (!connection) {
         console.error('❌ Попытка добавить пользователя до установки соединения с БД.');
         await bot.sendMessage(msg.chat.id, 'Sorry, the bot is not ready yet. Please try again in a minute.');
@@ -341,7 +341,6 @@ bot.onText(/\/start/, async (msg) => {
     };
 
     try {
-        await checkConnection();
         await connection.execute(
             'INSERT INTO users (chat_id, username, first_name, last_name, info, is_active) VALUES (?, ?, ?, ?, ?, TRUE) ' +
             'ON DUPLICATE KEY UPDATE username = ?, first_name = ?, last_name = ?, info = ?, is_active = TRUE',
@@ -358,6 +357,7 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 bot.on('callback_query', async (callbackQuery) => {
+
     const msg = callbackQuery.message;
     const data = callbackQuery.data;
     // Обработка настройки
