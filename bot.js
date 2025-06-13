@@ -1,7 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import cron from 'node-cron';
-import fs from 'fs';
-import path from 'path';
+// import fs from 'fs';
+// import path from 'path';
 import 'dotenv/config';
 import axios from 'axios';
 import mysql from 'mysql2/promise';
@@ -30,27 +30,39 @@ if (!freepikApiKey) {
 // Инициализируем бота
 const bot = new TelegramBot(token, { polling: true });
 
+let pool; // Переменная для хранения соединения с базой данных
 let connection; // Переменная для хранения соединения с базой данных
 
 async function initializeDatabase() {
     try {
-
-        connection = await mysql.createConnection({
+        pool = mysql.createPool({
             host: dbHost,
             user: dbUser,
             password: dbPassword,
-            database: dbName
+            database: dbName,
+            waitForConnections: true, // If true, the pool will queue requests when no connections are available
+            connectionLimit: 10,     // Max number of connections in the pool
+            queueLimit: 0            // Max number of connection requests the pool will queue (0 means no limit)
         });
+        connection = await pool.getConnection();
+
         console.log('🟢 Соединение с базой данных MySQL установлено.');
     } catch (error) {
-        console.log(
-            "host:" , dbHost,
-            "user:" , dbUser,
-            "password:" , dbPassword,
-            "database:" , dbName
-        )
+        // console.log(
+        //     "host:" , dbHost,
+        //     "user:" , dbUser,
+        //     "password:" , dbPassword,
+        //     "database:" , dbName
+        // )
         console.error('❌ Ошибка инициализации базы данных MySQL:', error.message);
         process.exit(1);
+    }
+}
+
+async function checkConnection () {
+    if (!pool || !connection) { // Ensure the pool is initialized before trying to get a connection
+        await initializeDatabase();
+        connection = await pool.getConnection();
     }
 }
 
@@ -62,7 +74,7 @@ async function loadPrinciples() {
         // const data = fs.readFileSync(path.resolve('principles.json'), 'utf-8');
         // principles = JSON.parse(data).principles || ['Нет данных'];
         // console.log('🟢 principles.json загружен:');
-
+        await checkConnection();
         [allPrinciples] = await connection.execute('SELECT * FROM principles');
         principles['en'] = allPrinciples.map(row => row.text_en);
         principles['ru'] = allPrinciples.map(row => row.text_ru);
@@ -82,7 +94,7 @@ async function loadImageData() {
         // const data = fs.readFileSync(path.resolve('images.json'), 'utf-8');
         // imageData = JSON.parse(data);
         // console.log('🟢 images.json загружен:');
-
+        await checkConnection();
         const [fragments] = await connection.execute('SELECT subject, action, setting FROM image_fragments');
         const [styles] = await connection.execute('SELECT style_name FROM image_styles');
 
@@ -213,7 +225,7 @@ async function generateMotivationalImage(prompt, style) {
 
 // Отправка принципов списком и 4 мотивационных изображений каждый день в 9 утра
 cron.schedule('0 5 * * *', async () => {
-
+    await checkConnection();
     const [users] = await connection.execute('SELECT chat_id, lang FROM users WHERE is_active = TRUE');
     if (users.length === 0) {
         console.log('ℹ️ Нет активных пользователей для рассылки.');
@@ -329,6 +341,7 @@ bot.onText(/\/start/, async (msg) => {
     };
 
     try {
+        await checkConnection();
         await connection.execute(
             'INSERT INTO users (chat_id, username, first_name, last_name, info, is_active) VALUES (?, ?, ?, ?, ?, TRUE) ' +
             'ON DUPLICATE KEY UPDATE username = ?, first_name = ?, last_name = ?, info = ?, is_active = TRUE',
@@ -373,6 +386,7 @@ bot.on('callback_query', async (callbackQuery) => {
     }
 
     if (languages.includes(data)) {
+        await checkConnection();
         await connection.execute('UPDATE users SET lang = ? WHERE chat_id = ?', [data, msg.chat.id.toString()]);
     }
 
