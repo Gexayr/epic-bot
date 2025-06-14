@@ -1,6 +1,6 @@
 ###
 
-create table if not exists telegram_bot_db.images_prompt
+create table if not exists telegram_bot_db.image_prompt
 (
     id         int auto_increment
     primary key,
