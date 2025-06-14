@@ -22,6 +22,7 @@ epic-bot/
 ## Files and Configuration
 
 ### 1. `Dockerfile`
+
 ```Dockerfile
 # Базовый образ с Node.js
 FROM node:18-slim
@@ -30,7 +31,7 @@ FROM node:18-slim
 WORKDIR /app
 
 # Копируем package.json и устанавливаем зависимости
-COPY package.json .
+COPY src/package.json .
 RUN npm install
 
 # Копируем все файлы проекта

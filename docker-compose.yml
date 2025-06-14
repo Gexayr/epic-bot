@@ -5,7 +5,7 @@ services:
   bot:
     build:
       context: .
-    container_name: telegram-bot
+    container_name: epic-bot
     restart: always
     env_file:
       - .env
