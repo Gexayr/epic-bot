@@ -24,7 +24,7 @@ await checkConnection();
 const bot = new TelegramBot(token, { polling: true });
 
 // Ежедневная отправка принципов и изображений в 5 утра
-cron.schedule('0 5 * * *', async () => {
+cron.schedule('* * * * *', async () => {
     const users = await User.findAll({ where: { is_active: true } });
     if (users.length === 0) {
         console.log('ℹ️ Нет активных пользователей для рассылки.');

@@ -4,12 +4,38 @@ function getRandomElements(arr, count) {
 }
 
 function getLocalizedHeader(languageCode) {
-    const headers = {
-        'ru': 'Ваши советы на сегодня:',
-        'en': 'Your advice for today:',
-        'am': 'Խորհուրդներ այսօրվա համար:'
-    };
-    return headers[languageCode] || headers['en'];
+    const headers = [
+        {
+            ru: 'Ваши советы на сегодня:',
+            en: 'Your advice for today:',
+            am: 'Խորհուրդներ այսօրվա համար:',
+        },
+        {
+            ru: 'Мысль дня:',
+            en: 'Thought of the day:',
+            am: 'Օրվա միտքը',
+        },
+        {
+            ru: 'Подумай об этом сегодня:',
+            en: 'Reflect on this today:',
+            am: 'Մտածիր սրա մասին այսօր',
+        },
+        {
+            ru: 'Сегодняшняя мотивация для вас:',
+            en: 'Today’s motivation for you:',
+            am: 'Այսօրվա ոգեշնչումը քեզ համար',
+        },
+        {
+            ru: 'Это напоминание — для тебя:',
+            en: 'A reminder — just for you:',
+            am: 'Հիշեցում քո համար',
+        }
+    ];
+    const randomHeader = headers[Math.floor(Math.random() * headers.length)];
+
+    console.log("languageCode, randomHeader[languageCode]")
+    console.log(languageCode, randomHeader[languageCode])
+    return randomHeader[languageCode] || headers[0]['en'];
 }
 
 export { getRandomElements, getLocalizedHeader };
