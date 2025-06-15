@@ -17,12 +17,14 @@ if (!token) {
     process.exit(1);
 }
 
+// Инициализируем соединение с базой данных при запуске
+await checkConnection();
+
 // Инициализируем бота
 const bot = new TelegramBot(token, { polling: true });
 
 // Ежедневная отправка принципов и изображений в 5 утра
-cron.schedule('* * * * *', async () => {
-    await checkConnection();
+cron.schedule('0 5 * * *', async () => {
     const users = await User.findAll({ where: { is_active: true } });
     if (users.length === 0) {
         console.log('ℹ️ Нет активных пользователей для рассылки.');
@@ -33,7 +35,7 @@ cron.schedule('* * * * *', async () => {
     const imageData = await loadImageData();
     let principlesText = [];
     let selectedPrinciples = [];
-    const shuffledPrinciples = []
+    const shuffledPrinciples = [];
     for (const lang of languages) {
         selectedPrinciples[lang] = getRandomElements(principles[lang], 10);
         shuffledPrinciples[lang] = getRandomElements(selectedPrinciples[lang], 4);
@@ -89,7 +91,6 @@ cron.schedule('* * * * *', async () => {
 
 // Обработчик команды /start
 bot.onText(/\/start/, async (msg) => {
-    await checkConnection();
     const chatId = msg.chat.id.toString();
     const username = msg.from.username || null;
     const firstName = msg.from.first_name || null;
@@ -153,7 +154,6 @@ bot.on('callback_query', async (callbackQuery) => {
     }
 
     if (languages.includes(data)) {
-        await checkConnection();
         await User.update({ lang: data }, { where: { chat_id: msg.chat.id.toString() } });
     }
 
