@@ -11,4 +11,5 @@ async function initializeDatabase() {
     }
 }
 
-export { initializeDatabase };
+
+export { sequelize, initializeDatabase };
