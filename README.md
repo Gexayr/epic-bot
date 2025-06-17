@@ -130,6 +130,10 @@ docker exec -it epic-bot bash
 npx sequelize-cli db:migrate
 ```
 
+```bash
+npx sequelize-cli db:seed:all
+```
+
 ### 6. Verify Logs
 Check the logs to ensure the bot and database are running:
 
@@ -250,7 +254,11 @@ npx sequelize-cli db:migrate
 ```bash
 npx sequelize-cli db:migrate:undo
 ```
+or
 
+```bash
+npx sequelize-cli db:migrate:undo:all
+```
 
 - Initialize database connection in db.js:
 ```js

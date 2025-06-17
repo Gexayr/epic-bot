@@ -11,10 +11,4 @@ async function initializeDatabase() {
     }
 }
 
-async function checkConnection() {
-    if (!sequelize) {
-        await initializeDatabase();
-    }
-}
-
-export { sequelize, initializeDatabase, checkConnection };
+export { initializeDatabase };

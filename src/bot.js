@@ -1,7 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import cron from 'node-cron';
 import 'dotenv/config';
-import { checkConnection } from './database/db.js';
+import { initializeDatabase } from './database/db.js';
 import { loadPrinciples } from './services/principleService.js';
 import { loadImageData } from './services/imageService.js';
 import { createRandomPrompt, generateMotivationalImage } from './utils/imageUtils.js';
@@ -17,8 +17,7 @@ if (!token) {
     process.exit(1);
 }
 
-// Инициализируем соединение с базой данных при запуске
-await checkConnection();
+await initializeDatabase();
 
 // Инициализируем бота
 const bot = new TelegramBot(token, { polling: true });
