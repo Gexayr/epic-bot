@@ -11,10 +11,10 @@ function getLocalizedHeader(languageCode) {
             am: 'Խորհուրդներ այսօրվա համար:',
         },
         {
-            ru: 'Мысль дня:',
-            en: 'Thought of the day:',
-            am: 'Օրվա միտքը',
-        },
+            ru: 'Мысли дня:',
+            en: 'Thoughts of the day:',
+            am: 'Օրվա մտքերը'
+        }
         {
             ru: 'Подумай об этом сегодня:',
             en: 'Reflect on this today:',
