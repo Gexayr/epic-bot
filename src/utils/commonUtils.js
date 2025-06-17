@@ -13,8 +13,8 @@ function getLocalizedHeader(languageCode) {
         {
             ru: 'Мысли дня:',
             en: 'Thoughts of the day:',
-            am: 'Օրվա մտքերը'
-        }
+            am: 'Օրվա մտքերը',
+        },
         {
             ru: 'Подумай об этом сегодня:',
             en: 'Reflect on this today:',
