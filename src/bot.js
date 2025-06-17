@@ -124,6 +124,42 @@ bot.onText(/\/start/, async (msg) => {
     }
 });
 
+bot.onText(/\/gen/, async (msg) => {
+    const principles = await loadPrinciples();
+    const imageData = await loadImageData();
+    let principlesText = [];
+    let selectedPrinciples = [];
+    let shuffledPrinciples = [];
+
+    for (const lang of languages) {
+        selectedPrinciples[lang] = getRandomElements(principles[lang], 10);
+        shuffledPrinciples[lang] = getRandomElements(selectedPrinciples[lang], 4);
+        const header = getLocalizedHeader(lang);
+        principlesText[lang] = `✅ ${header}\n\n` +
+            selectedPrinciples[lang].map((p, i) => `${i + 1}. ${p}`).join('\n');
+    }
+
+    await PrincipleLog.create({ text: principlesText['en'] });
+
+    const lang = getRandomElements(languages, 1)
+    const userLanguage = lang || 'en';
+    await bot.sendMessage(msg.chat.id, principlesText[userLanguage]);
+    for (let i = 0; i < 4; i++) {
+        const prompt = createRandomPrompt(imageData.fragments);
+        const style = getRandomElements(imageData.styles, 1)[0];
+        const imageUrl = await generateMotivationalImage(prompt, style);
+        if (imageUrl) {
+            await ImagePrompt.create({ prompt, style });
+            const userLanguage = lang || 'en';
+            const principle = shuffledPrinciples[userLanguage][i];
+            await bot.sendPhoto(msg.chat.id, imageUrl, {
+                caption: `✅ ${principle}`
+            });
+        }
+    }
+    await bot.sendMessage(msg.chat.id, 'generated 😎');
+});
+
 // Обработчик callback-запросов
 bot.on('callback_query', async (callbackQuery) => {
     const msg = callbackQuery.message;
