@@ -58,9 +58,7 @@ async function checkImageStatus(taskId) {
         const status = response.data.data.status;
         const generated = response.data.data.generated;
         console.log('🟢 Статус задачи:', status);
-        if ((status === 'COMPLETED' && generated.length > 0)
-            || (status === 'CREATED' && generated.length > 0)
-        ) {
+        if (status === 'COMPLETED' && generated.length > 0) {
             const imageUrl = generated[0];
             console.log('🟢 Изображение готово:', imageUrl);
             return imageUrl;
