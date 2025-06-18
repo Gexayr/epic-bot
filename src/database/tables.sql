@@ -256,6 +256,16 @@ INSERT INTO image_fragments (subject, action, setting) VALUES
 ('A clever rogue', 'silently infiltrates a heavily guarded fortress', 'shadows stretching long in the moonlit courtyard'),
 ('A mystical healer', 'tends to a wounded beast in a sun-dappled grove', 'fragrant herbs laid out on mossy stones'),
 ('A seasoned explorer', 'discovers a lost artifact in a forgotten tomb', 'dust motes dancing in the single shaft of light'),
+('A silent monk', 'meditates atop a windswept cliff', 'ancient temples carved into the mountains behind him'),
+('A cunning assassin', 'balances on a cathedral spire', 'watching a royal procession below through the fog'),
+('A fierce queen', 'stands in a war tent', 'her armor shimmering in firelight as maps flutter in the wind'),
+('A vigilant guardian', 'patrols a crystal bridge', 'stars reflecting in the endless abyss below'),
+('A young scribe', 'uncovers a glowing manuscript', 'in a candlelit library beneath a crumbling castle'),
+('A determined blacksmith', 'hammers a glowing blade on an anvil', 'molten sparks flying as dawn breaks over the forge'),
+('A wild druid', 'summons animals from the forest', 'as mist curls through ancient trees and moonlight glows'),
+('A stoic samurai', 'draws their katana in a cherry blossom storm', 'petals swirling in slow motion around them'),
+('A daring sky pirate', 'leaps from a floating ship', 'clouds parting to reveal a sunlit aerial city below'),
+('A young prophet', 'receives a vision beneath a sacred tree', 'light cascading through golden autumn leaves'),
 ('A young inventor', 'launches a fantastical contraption into the sky', 'a bustling cityscape far below');
 
 ###
