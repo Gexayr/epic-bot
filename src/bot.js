@@ -41,9 +41,9 @@ cron.schedule('0 5 * * *', async () => {
         const header = getLocalizedHeader(lang);
         principlesText[lang] = `✅ ${header}\n\n` +
             selectedPrinciples[lang].map((p, i) => `${i + 1}. ${p}`).join('\n');
-    }
 
-    await PrincipleLog.create({ text: principlesText['en'] });
+        await PrincipleLog.create({ text: principlesText[lang] });
+    }
 
     for (const user of users) {
         try {
