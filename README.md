@@ -113,33 +113,33 @@ MYSQL_DB_HOST=mysql-database
 
 ### 3. Install Dependencies
 ```npm install
-npm install sequelize-cli --save-dev
-npm install dotenv
+    npm install sequelize-cli --save-dev
+    npm install dotenv
 ```
 
 ### 4. Build and Run with Docker
 
 ```bash
-docker-compose down
-docker-compose up --build
+    docker-compose down
+    docker-compose up --build
 ```
 ### 5. Apply Sequelize Migrations
 Enter the bot container and apply migrations:
 ```bash
-docker exec -it epic-bot bash
-npx sequelize-cli db:migrate
+    docker exec -it epic-bot bash
+    npx sequelize-cli db:migrate
 ```
 
 ```bash
-npx sequelize-cli db:seed:all
+    npx sequelize-cli db:seed:all
 ```
 
 ### 6. Verify Logs
 Check the logs to ensure the bot and database are running:
 
 ```bash
-docker logs epic-bot
-docker logs mysql-database
+    docker logs epic-bot
+    docker logs mysql-database
 ```
 
 ## Usage
@@ -154,14 +154,14 @@ Sequelize is used to manage the MySQL database. Follow these steps to configure 
 
 - Install Sequelize and CLI:
 ```bash
-npm install sequelize
-npm install sequelize-cli --save-dev
+    npm install sequelize
+    npm install sequelize-cli --save-dev
 ```
 
 - Initialize Sequelize CLI:
 
 ```angular2html
-npx sequelize-cli init
+    npx sequelize-cli init
 ```
 
 - Configure config/config.js for ES6 modules (due to "type": "module" in package.json):
@@ -202,8 +202,8 @@ export default {
 - Create migration files for each table (e.g., users, image_fragments):
 
 ```bash
-npx sequelize-cli migration:generate --name create-users
-npx sequelize-cli migration:generate --name create-image_fragments
+    npx sequelize-cli migration:generate --name create-users
+    npx sequelize-cli migration:generate --name create-image_fragments
 ```
 
 Edit the generated files (e.g., 20250614192852-create-image_fragments.js) with the table structure:
@@ -246,18 +246,18 @@ module.exports = {
 
 - Apply migrations:
 ```bash
-npx sequelize-cli db:migrate 
+    npx sequelize-cli db:migrate 
 ```
 
 
 - Roll back migrations if needed:
 ```bash
-npx sequelize-cli db:migrate:undo
+    npx sequelize-cli db:migrate:undo
 ```
 or
 
 ```bash
-npx sequelize-cli db:migrate:undo:all
+    npx sequelize-cli db:migrate:undo:all
 ```
 
 - Initialize database connection in db.js:

@@ -2,20 +2,20 @@ version: '3.8'
 
 services:
   # Service for your Node.js Telegram bot
-  bot:
+  lady_bot:
     build:
       context: .
-    container_name: epic-bot
+    container_name: ladys-bot
     restart: always
     env_file:
       - .env
     networks:
-      - bot_network
+      - lady_bot_network
 
   # Service for the MySQL database
-  db:
+  lady_db:
     image: mysql:8
-    container_name: mysql-database
+    container_name: ladys-mysql-database
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -25,15 +25,15 @@ services:
     env_file:
       - .env
     ports:
-      - "33106:3306"
+      - "33107:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - lady_mysql_data:/var/lib/mysql
     networks:
-      - bot_network
+      - lady_bot_network
 
 volumes:
-  mysql_data:
+  lady_mysql_data:
 
 networks:
-  bot_network:
+  lady_bot_network:
     driver: bridge
