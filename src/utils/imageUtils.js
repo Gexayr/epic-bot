@@ -10,6 +10,14 @@ function createRandomPrompt(fragments) {
     return `${randomSubject} ${randomAction} ${randomSetting}, vibrant colors, uplifting mood, cinematic lighting, epic composition`;
 }
 
+function createNotRandomPrompt(fragments) {
+    const index = Math.floor(Math.random() * fragments.length);
+    const randomSubject = fragments[index].subject;
+    const randomAction = fragments[index].action;
+    const randomSetting = fragments[index].setting;
+    return `${randomSubject} ${randomAction} ${randomSetting}, vibrant colors, uplifting mood, cinematic lighting, epic composition`;
+}
+
 async function initiateImageGeneration(prompt, style) {
     try {
         const response = await axios.post(
@@ -87,4 +95,4 @@ async function generateMotivationalImage(prompt, style) {
     return null;
 }
 
-export { createRandomPrompt, generateMotivationalImage };
+export { createRandomPrompt, createNotRandomPrompt, generateMotivationalImage };

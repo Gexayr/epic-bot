@@ -4,7 +4,7 @@ import 'dotenv/config';
 import { initializeDatabase } from './database/db.js';
 import { loadPrinciples } from './services/principleService.js';
 import { loadImageData } from './services/imageService.js';
-import { createRandomPrompt, generateMotivationalImage } from './utils/imageUtils.js';
+import { createRandomPrompt, createNotRandomPrompt, generateMotivationalImage } from './utils/imageUtils.js';
 import { getRandomElements, getLocalizedHeader } from './utils/commonUtils.js';
 import { User, PrincipleLog, ImagePrompt } from './database/models/index.js';
 
@@ -62,7 +62,7 @@ cron.schedule('0 5 * * *', async () => {
     console.log('🟢 Отправка 4 изображений в 5:00');
 
     for (let i = 0; i < 4; i++) {
-        const prompt = createRandomPrompt(imageData.fragments);
+        const prompt = createNotRandomPrompt(imageData.fragments);
         const style = getRandomElements(imageData.styles, 1)[0];
         const imageUrl = await generateMotivationalImage(prompt, style);
         if (imageUrl) {
@@ -145,7 +145,7 @@ bot.onText(/\/gen/, async (msg) => {
     const userLanguage = lang || 'en';
     await bot.sendMessage(msg.chat.id, principlesText[userLanguage]);
     for (let i = 0; i < 4; i++) {
-        const prompt = createRandomPrompt(imageData.fragments);
+        const prompt = createNotRandomPrompt(imageData.fragments);
         const style = getRandomElements(imageData.styles, 1)[0];
         const imageUrl = await generateMotivationalImage(prompt, style);
         if (imageUrl) {
