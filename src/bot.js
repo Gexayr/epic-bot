@@ -12,6 +12,11 @@ import { User, PrincipleLog, ImagePrompt } from './database/models/index.js';
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const languages = ["am", "ru", "en"];
 
+const channel_en = process.env.CHANNEL_EN;
+const channel_ru = process.env.CHANNEL_RU;
+const channel_am = process.env.CHANNEL_AM;
+const channels = { en: channel_en, ru: channel_ru, am: channel_am };
+
 if (!token) {
     console.error('❌ Ошибка: TELEGRAM_BOT_TOKEN не задан');
     process.exit(1);
@@ -23,18 +28,18 @@ await initializeDatabase();
 const bot = new TelegramBot(token, { polling: true });
 
 // Ежедневная отправка принципов и изображений в 5 утра
-cron.schedule('0 5 * * *', async () => {
+cron.schedule('3 5 * * *', async () => {
     const users = await User.findAll({ where: { is_active: true } });
     if (users.length === 0) {
         console.log('ℹ️ Нет активных пользователей для рассылки.');
-        return;
     }
 
     const principles = await loadPrinciples();
     const imageData = await loadImageData();
-    let principlesText = [];
-    let selectedPrinciples = [];
-    const shuffledPrinciples = [];
+    let principlesText = {};
+    let selectedPrinciples = {};
+    const shuffledPrinciples = {};
+
     for (const lang of languages) {
         selectedPrinciples[lang] = getRandomElements(principles[lang], 10);
         shuffledPrinciples[lang] = getRandomElements(selectedPrinciples[lang], 4);
@@ -55,6 +60,19 @@ cron.schedule('0 5 * * *', async () => {
             if (err.response && err.response.statusCode === 403) {
                 console.log(`Пользователь ${user.chat_id} заблокировал бота. Деактивация.`);
                 await User.update({ is_active: false }, { where: { chat_id: user.chat_id } });
+            }
+        }
+    }
+
+    console.log('🟢 Отправка принципов в каналы, если они заданы');
+    for (const lang of languages) {
+        const channelId = channels[lang];
+        if (channelId) {
+            try {
+                await bot.sendMessage(channelId, principlesText[lang]);
+                console.log(`🟢 Принципы отправлены в канал ${channelId} (${lang})`);
+            } catch (err) {
+                console.error(`❌ Ошибка отправки принципов в канал ${channelId} (${lang}):`, err.message);
             }
         }
     }
@@ -81,6 +99,21 @@ cron.schedule('0 5 * * *', async () => {
                     if (err.response && err.response.statusCode === 403) {
                         console.log(`Пользователь ${user.chat_id} заблокировал бота. Деактивация.`);
                         await User.update({ is_active: false }, { where: { chat_id: user.chat_id } });
+                    }
+                }
+            }
+
+            for (const lang of languages) {
+                const channelId = channels[lang];
+                if (channelId) {
+                    try {
+                        const principle = shuffledPrinciples[lang][i];
+                        await bot.sendPhoto(channelId, imageUrl, {
+                            caption: `✅ ${principle}`
+                        });
+                        console.log(`✅ Отправлено изображение в канал ${channelId} (${lang})`);
+                    } catch (err) {
+                        console.error(`❌ Ошибка отправки изображения в канал ${channelId} (${lang}):`, err.message);
                     }
                 }
             }
@@ -127,9 +160,10 @@ bot.onText(/\/start/, async (msg) => {
 bot.onText(/\/gen/, async (msg) => {
     const principles = await loadPrinciples();
     const imageData = await loadImageData();
-    let principlesText = [];
-    let selectedPrinciples = [];
-    let shuffledPrinciples = [];
+    let principlesText = {};
+    let selectedPrinciples = {};
+    let shuffledPrinciples = {};
+    const chatId = msg.chat.id;
 
     for (const lang of languages) {
         selectedPrinciples[lang] = getRandomElements(principles[lang], 10);
@@ -144,6 +178,18 @@ bot.onText(/\/gen/, async (msg) => {
     const lang = getRandomElements(languages, 1)
     const userLanguage = lang || 'en';
     await bot.sendMessage(msg.chat.id, principlesText[userLanguage]);
+
+    for (const lang of languages) {
+        const channelId = channels[lang];
+        if (channelId) {
+            try {
+                await bot.sendMessage(channelId, principlesText[lang]);
+                console.log(`🟢 Принципы отправлены в канал ${channelId} (${lang})`);
+            } catch (err) {
+                console.error(`❌ Ошибка отправки принципов в канал ${channelId} (${lang}):`, err.message);
+            }
+        }
+    }
     for (let i = 0; i < 4; i++) {
         const prompt = createNotRandomPrompt(imageData.fragments);
         const style = getRandomElements(imageData.styles, 1)[0];
@@ -152,12 +198,27 @@ bot.onText(/\/gen/, async (msg) => {
             await ImagePrompt.create({ prompt, style });
             const userLanguage = lang || 'en';
             const principle = shuffledPrinciples[userLanguage][i];
-            await bot.sendPhoto(msg.chat.id, imageUrl, {
+            await bot.sendPhoto(chatId, imageUrl, {
                 caption: `✅ ${principle}`
             });
+
+            for (const lang of languages) {
+                const channelId = channels[lang];
+                if (channelId) {
+                    try {
+                        const channelPrinciple = shuffledPrinciples[lang][i];
+                        await bot.sendPhoto(channelId, imageUrl, {
+                            caption: `✅ ${channelPrinciple}`
+                        });
+                        console.log(`✅ Отправлено изображение в канал ${channelId} (${lang})`);
+                    } catch (err) {
+                        console.error(`❌ Ошибка отправки изображения в канал ${channelId} (${lang}):`, err.message);
+                    }
+                }
+            }
         }
     }
-    await bot.sendMessage(msg.chat.id, 'generated 😎');
+    await bot.sendMessage(chatId, 'generated 😎');
 });
 
 // Обработчик callback-запросов
