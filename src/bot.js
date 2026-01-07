@@ -159,7 +159,7 @@ bot.onText(/\/start/, async (msg) => {
 
 bot.onText(/\/gen/, async (msg) => {
     const principles = await loadPrinciples();
-    // const imageData = await loadImageData();
+    const imageData = await loadImageData();
     let principlesText = {};
     let selectedPrinciples = {};
     let shuffledPrinciples = {};
