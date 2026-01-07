@@ -41,7 +41,7 @@ cron.schedule('0 5 * * *', async () => {
     const shuffledPrinciples = {};
 
     for (const lang of languages) {
-        selectedPrinciples[lang] = getRandomElements(principles[lang], 10);
+        selectedPrinciples[lang] = principles[lang];
         shuffledPrinciples[lang] = getRandomElements(selectedPrinciples[lang], 4);
         const header = getLocalizedHeader(lang);
         principlesText[lang] = `✅ ${header}\n\n` +
@@ -159,7 +159,7 @@ bot.onText(/\/start/, async (msg) => {
 
 bot.onText(/\/gen/, async (msg) => {
     const principles = await loadPrinciples();
-    const imageData = await loadImageData();
+    // const imageData = await loadImageData();
     let principlesText = {};
     let selectedPrinciples = {};
     let shuffledPrinciples = {};
