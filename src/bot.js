@@ -80,7 +80,7 @@ cron.schedule('0 5 * * *', async () => {
     console.log('🟢 Отправка 4 изображений в 5:00');
 
     for (let i = 0; i < 4; i++) {
-        const prompt = createNotRandomPrompt(imageData.fragments);
+        const prompt = createNotRandomPrompt(imageData.fragments, i);
         const style = getRandomElements(imageData.styles, 1)[0];
         const imageUrl = await generateMotivationalImage(prompt, style);
         if (imageUrl) {
@@ -191,7 +191,7 @@ bot.onText(/\/gen/, async (msg) => {
         }
     }
     for (let i = 0; i < 4; i++) {
-        const prompt = createNotRandomPrompt(imageData.fragments);
+        const prompt = createNotRandomPrompt(imageData.fragments, i);
         const style = getRandomElements(imageData.styles, 1)[0];
         const imageUrl = await generateMotivationalImage(prompt, style);
         if (imageUrl) {

@@ -9,8 +9,8 @@ function createRandomPrompt(fragments) {
     const randomSetting = fragments[Math.floor(Math.random() * fragments.length)].setting;
     return `${randomSubject} ${randomAction} ${randomSetting}, vibrant colors, uplifting mood, cinematic lighting, epic composition`;
 }
-function createNotRandomPrompt(fragments) {
-    const index = Math.floor(Math.random() * fragments.length);
+function createNotRandomPrompt(fragments, index) {
+    // const index = Math.floor(Math.random() * fragments.length);
     const randomSubject = fragments[index].subject;
     const randomAction = fragments[index].action;
     const randomSetting = fragments[index].setting;

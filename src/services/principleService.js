@@ -6,6 +6,7 @@ Each should be presented in three languages: English, Russian, and Armenian.
 The principles should be similar in style and length to these examples:
 - "Never stop evolving; a wise man is a lifelong student of life."
 - "Use your power to protect the vulnerable and empower the weak."
+- "Don’t seek meaning externally — build it yourself."
 - "Define yourself by your own values, not by the expectations of the world."
 
 Return the result STRICTLY as a JSON object with this structure:

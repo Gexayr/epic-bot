@@ -9,8 +9,14 @@ services:
     restart: always
     env_file:
       - .env
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev
     networks:
       - bot_network
+    depends_on:
+      - db
 
   # Service for the MySQL database
   db:
