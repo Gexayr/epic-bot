@@ -33,8 +33,6 @@ function getLocalizedHeader(languageCode) {
     ];
     const randomHeader = headers[Math.floor(Math.random() * headers.length)];
 
-    console.log("languageCode, randomHeader[languageCode]")
-    console.log(languageCode, randomHeader[languageCode])
     return randomHeader[languageCode] || headers[0]['en'];
 }
 

@@ -158,67 +158,79 @@ bot.onText(/\/start/, async (msg) => {
 });
 
 bot.onText(/\/gen/, async (msg) => {
-    const principles = await loadPrinciples();
-    const imageData = await loadImageData();
-    let principlesText = {};
-    let selectedPrinciples = {};
-    let shuffledPrinciples = {};
     const chatId = msg.chat.id;
+    try {
+        const principles = await loadPrinciples();
+        const imageData = await loadImageData();
+        let principlesText = {};
+        let selectedPrinciples = {};
+        let shuffledPrinciples = {};
 
-    for (const lang of languages) {
-        selectedPrinciples[lang] = getRandomElements(principles[lang], 10);
-        shuffledPrinciples[lang] = getRandomElements(selectedPrinciples[lang], 4);
-        const header = getLocalizedHeader(lang);
-        principlesText[lang] = `✅ ${header}\n\n` +
-            selectedPrinciples[lang].map((p, i) => `${i + 1}. ${p}`).join('\n');
-    }
+        for (const lang of languages) {
+            selectedPrinciples[lang] = getRandomElements(principles[lang], 10);
+            shuffledPrinciples[lang] = getRandomElements(selectedPrinciples[lang], 4);
+            const header = getLocalizedHeader(lang);
+            principlesText[lang] = `✅ ${header}\n\n` +
+                selectedPrinciples[lang].map((p, i) => `${i + 1}. ${p}`).join('\n');
+        }
 
-    await PrincipleLog.create({ text: principlesText['en'] });
+        await PrincipleLog.create({ text: principlesText['en'] });
 
-    const lang = getRandomElements(languages, 1)
-    const userLanguage = lang || 'en';
-    await bot.sendMessage(msg.chat.id, principlesText[userLanguage]);
+        const lang = getRandomElements(languages, 1);
+        const userLanguage = lang || 'en';
+        await bot.sendMessage(chatId, principlesText[userLanguage]);
 
-    for (const lang of languages) {
-        const channelId = channels[lang];
-        if (channelId) {
-            try {
-                await bot.sendMessage(channelId, principlesText[lang]);
-                console.log(`🟢 Принципы отправлены в канал ${channelId} (${lang})`);
-            } catch (err) {
-                console.error(`❌ Ошибка отправки принципов в канал ${channelId} (${lang}):`, err.message);
+        for (const lang of languages) {
+            const channelId = channels[lang];
+            if (channelId) {
+                try {
+                    await bot.sendMessage(channelId, principlesText[lang]);
+                    console.log(`🟢 Принципы отправлены в канал ${channelId} (${lang})`);
+                } catch (err) {
+                    console.error(`❌ Ошибка отправки принципов в канал ${channelId} (${lang}):`, err.message);
+                }
             }
         }
-    }
-    for (let i = 0; i < 4; i++) {
-        const prompt = createNotRandomPrompt(imageData.fragments, i);
-        const style = getRandomElements(imageData.styles, 1)[0];
-        const imageUrl = await generateMotivationalImage(prompt, style);
-        if (imageUrl) {
-            await ImagePrompt.create({ prompt, style });
-            const userLanguage = lang || 'en';
-            const principle = shuffledPrinciples[userLanguage][i];
-            await bot.sendPhoto(chatId, imageUrl, {
-                caption: `✅ ${principle}`
-            });
 
-            for (const lang of languages) {
-                const channelId = channels[lang];
-                if (channelId) {
-                    try {
-                        const channelPrinciple = shuffledPrinciples[lang][i];
-                        await bot.sendPhoto(channelId, imageUrl, {
-                            caption: `✅ ${channelPrinciple}`
-                        });
-                        console.log(`✅ Отправлено изображение в канал ${channelId} (${lang})`);
-                    } catch (err) {
-                        console.error(`❌ Ошибка отправки изображения в канал ${channelId} (${lang}):`, err.message);
+        for (let i = 0; i < 4; i++) {
+            const prompt = createNotRandomPrompt(imageData.fragments, i);
+            const style = getRandomElements(imageData.styles, 1)[0];
+            const imageUrl = await generateMotivationalImage(prompt, style);
+            if (imageUrl) {
+                await ImagePrompt.create({ prompt, style });
+                const userLanguage = lang || 'en';
+                const principle = shuffledPrinciples[userLanguage][i];
+                try {
+                    await bot.sendPhoto(chatId, imageUrl, {
+                        caption: `✅ ${principle}`
+                    });
+                } catch (err) {
+                    console.error(`❌ Ошибка отправки фото пользователю:`, err.message);
+                }
+
+                for (const lang of languages) {
+                    const channelId = channels[lang];
+                    if (channelId) {
+                        try {
+                            const channelPrinciple = shuffledPrinciples[lang][i];
+                            await bot.sendPhoto(channelId, imageUrl, {
+                                caption: `✅ ${channelPrinciple}`
+                            });
+                            console.log(`✅ Отправлено изображение в канал ${channelId} (${lang})`);
+                        } catch (err) {
+                            console.error(`❌ Ошибка отправки изображения в канал ${channelId} (${lang}):`, err.message);
+                        }
                     }
                 }
             }
         }
+        await bot.sendMessage(chatId, 'generated 😎');
+    } catch (err) {
+        console.error('❌ Ошибка в /gen:', err.message);
+        try {
+            await bot.sendMessage(chatId, '❌ Something went wrong. Please try again.');
+        } catch (_) {}
     }
-    await bot.sendMessage(chatId, 'generated 😎');
 });
 
 // Обработчик callback-запросов

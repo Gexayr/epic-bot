@@ -14,6 +14,14 @@ async function loadImageData() {
         } catch (aiErr) {
             console.error('⚠️ Ошибка AI генерации фрагментов, используем БД:', aiErr.message);
             fragments = await ImageFragment.findAll();
+            if (!fragments || fragments.length === 0) {
+                fragments = [
+                    { subject: 'A lone warrior', action: 'stands tall', setting: 'on a mountain peak at dawn' },
+                    { subject: 'A determined man', action: 'pushes forward', setting: 'through a storm with fierce resolve' },
+                    { subject: 'A wise leader', action: 'gazes ahead', setting: 'over a vast golden horizon' },
+                    { subject: 'A strong champion', action: 'rises again', setting: 'after falling in the arena of life' }
+                ];
+            }
         }
 
         const styles = await ImageStyle.findAll();
