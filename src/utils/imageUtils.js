@@ -16,6 +16,19 @@ const PIXVERSE_ASPECT_RATIO = process.env.PIXVERSE_ASPECT_RATIO || '1:1';
 // is the cheapest model confirmed to work on the Free tier (6 credits/image vs 60/day cap).
 const PIXVERSE_IMAGE_MODEL = process.env.PIXVERSE_IMAGE_MODEL || 'gemini-3.1-flash-lite';
 
+// PixVerse prices text-to-video and image-to-video identically (same per-second rate,
+// driven only by model/resolution/duration/audio) - see docs.platform.pixverse.ai/model-pricing.
+// We use image-to-video anyway since it reuses an image we already generated that day
+// at no extra credit cost, instead of spending a separate T2V generation on a new scene.
+const PIXVERSE_VIDEO_TIMEOUT_SEC = parseInt(process.env.PIXVERSE_VIDEO_TIMEOUT_SEC || '600', 10);
+const PIXVERSE_VIDEO_MODEL = process.env.PIXVERSE_VIDEO_MODEL || 'v6';
+// 360p is v6's cheapest quality tier (~4-6 credits/sec no-audio). At the default 1:1
+// aspect ratio this comes out to 640x640, vs 1024x1024 (and a higher rate) for 540p -
+// confirmed by test generation, so keep this the lowest tier unless quality complaints come in.
+const PIXVERSE_VIDEO_QUALITY = process.env.PIXVERSE_VIDEO_QUALITY || '360p';
+const PIXVERSE_VIDEO_DURATION = process.env.PIXVERSE_VIDEO_DURATION || '5';
+const PIXVERSE_VIDEO_AUDIO = process.env.PIXVERSE_VIDEO_AUDIO === 'true';
+
 function createRandomPrompt(fragments) {
     const randomSubject = fragments[Math.floor(Math.random() * fragments.length)].subject;
     const randomAction = fragments[Math.floor(Math.random() * fragments.length)].action;
@@ -73,9 +86,9 @@ async function generateMotivationalImage(prompt, style) {
 // disk (persisted via the pixverse_config/pixverse_home volumes) and is only
 // valid for ~30 days, so it needs to be redone periodically. PixVerse does
 // not currently document a headless/API-key auth method.
-async function runPixverseCli(args) {
+async function runPixverseCli(args, timeoutSec = PIXVERSE_TIMEOUT_SEC) {
     const { stdout } = await execFileAsync('pixverse', args, {
-        timeout: (PIXVERSE_TIMEOUT_SEC + 20) * 1000,
+        timeout: (timeoutSec + 20) * 1000,
         maxBuffer: 20 * 1024 * 1024
     });
     return stdout;
@@ -87,9 +100,9 @@ async function runPixverseCli(args) {
 function extractAssetInfo(result) {
     const asset = result?.assets?.[0] || result?.result?.assets?.[0] || result?.data?.assets?.[0] || result;
     return {
-        url: asset?.url || asset?.image_url || result?.url || result?.image_url || null,
+        url: asset?.url || asset?.image_url || asset?.video_url || result?.url || result?.image_url || result?.video_url || null,
         localPath: asset?.path || asset?.file || asset?.file_path || result?.path || null,
-        id: asset?.id || asset?.asset_id || result?.id || result?.image_id || null
+        id: asset?.id || asset?.asset_id || result?.id || result?.image_id || result?.video_id || null
     };
 }
 
@@ -158,4 +171,81 @@ async function generateMotivationalImage(prompt, style) {
     }
 }
 
-export { createRandomPrompt, createNotRandomPrompt, generateMotivationalImage };
+// --- PixVerse CLI image-to-video generation ---
+//
+// Takes an already-generated motivational image (Buffer) and animates it,
+// reusing the same prompt/style used for the image so the motion matches
+// the scene instead of paying for a second, unrelated generation.
+async function generateMotivationalVideo(prompt, imageBuffer, style) {
+    const fullPrompt = `${style ? `${prompt}, style: ${style}` : prompt}, slow cinematic camera movement, gentle motion, uplifting mood`;
+
+    let inputTmpDir;
+    let outputTmpDir;
+    try {
+        inputTmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pixverse-video-in-'));
+        const inputImagePath = path.join(inputTmpDir, 'source.png');
+        await fs.writeFile(inputImagePath, imageBuffer);
+
+        const args = [
+            'create', 'video',
+            '--prompt', fullPrompt,
+            '--image', inputImagePath,
+            '--model', PIXVERSE_VIDEO_MODEL,
+            '--quality', PIXVERSE_VIDEO_QUALITY,
+            '--duration', PIXVERSE_VIDEO_DURATION,
+            '--aspect-ratio', PIXVERSE_ASPECT_RATIO,
+            PIXVERSE_VIDEO_AUDIO ? '--audio' : '--no-audio',
+            '--timeout', String(PIXVERSE_VIDEO_TIMEOUT_SEC),
+            '--json'
+        ];
+
+        const stdout = await runPixverseCli(args, PIXVERSE_VIDEO_TIMEOUT_SEC);
+        const result = JSON.parse(stdout);
+        let { url, localPath, id } = extractAssetInfo(result);
+
+        if (!url && !localPath && id) {
+            outputTmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pixverse-video-out-'));
+            const dlOut = await runPixverseCli(['asset', 'download', id, '--dest', outputTmpDir, '--json'], PIXVERSE_VIDEO_TIMEOUT_SEC);
+            const dlResult = JSON.parse(dlOut);
+            ({ url, localPath } = extractAssetInfo(dlResult));
+            if (!url && !localPath) {
+                const files = await fs.readdir(outputTmpDir);
+                if (files.length) localPath = path.join(outputTmpDir, files[0]);
+            }
+        }
+
+        if (localPath) {
+            const buffer = await fs.readFile(localPath);
+            console.log('🟢 PixVerse CLI: video generated');
+            return buffer;
+        }
+
+        if (url) {
+            const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 120000 });
+            console.log('🟢 PixVerse CLI: video generated');
+            return Buffer.from(response.data);
+        }
+
+        console.error('❌ PixVerse CLI: could not locate generated video in output:', stdout);
+        return null;
+    } catch (err) {
+        const details = err.stderr || err.stdout || err.message;
+        if (err.code === 'ENOENT') {
+            console.error('❌ PixVerse CLI: `pixverse` binary not found — is it installed globally? (npm install -g pixverse)');
+        } else if (err.code === 3) {
+            console.error('❌ PixVerse CLI: authentication error — run `pixverse auth login` again (tokens last ~30 days).');
+        } else if (err.code === 4) {
+            console.error('❌ PixVerse CLI: credit/subscription limit reached.');
+        } else if (err.code === 2) {
+            console.error('❌ PixVerse CLI: generation timed out.');
+        } else {
+            console.error('❌ PixVerse CLI video error:', details);
+        }
+        return null;
+    } finally {
+        if (inputTmpDir) fs.rm(inputTmpDir, { recursive: true, force: true }).catch(() => {});
+        if (outputTmpDir) fs.rm(outputTmpDir, { recursive: true, force: true }).catch(() => {});
+    }
+}
+
+export { createRandomPrompt, createNotRandomPrompt, generateMotivationalImage, generateMotivationalVideo };
