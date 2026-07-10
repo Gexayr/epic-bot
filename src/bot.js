@@ -42,7 +42,7 @@ cron.schedule('0 5 * * *', async () => {
 
     for (const lang of languages) {
         selectedPrinciples[lang] = principles[lang];
-        shuffledPrinciples[lang] = getRandomElements(selectedPrinciples[lang], 4);
+        shuffledPrinciples[lang] = getRandomElements(selectedPrinciples[lang], 3);
         const header = getLocalizedHeader(lang);
         principlesText[lang] = `✅ ${header}\n\n` +
             selectedPrinciples[lang].map((p, i) => `${i + 1}. ${p}`).join('\n');
@@ -77,9 +77,9 @@ cron.schedule('0 5 * * *', async () => {
         }
     }
 
-    console.log('🟢 Отправка 4 изображений в 5:00');
+    console.log('🟢 Отправка 3 изображений в 5:00');
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 3; i++) {
         const prompt = createNotRandomPrompt(imageData.fragments, i);
         const style = getRandomElements(imageData.styles, 1)[0];
         const imageUrl = await generateMotivationalImage(prompt, style);
@@ -168,7 +168,7 @@ bot.onText(/\/gen/, async (msg) => {
 
         for (const lang of languages) {
             selectedPrinciples[lang] = getRandomElements(principles[lang], 10);
-            shuffledPrinciples[lang] = getRandomElements(selectedPrinciples[lang], 4);
+            shuffledPrinciples[lang] = getRandomElements(selectedPrinciples[lang], 3);
             const header = getLocalizedHeader(lang);
             principlesText[lang] = `✅ ${header}\n\n` +
                 selectedPrinciples[lang].map((p, i) => `${i + 1}. ${p}`).join('\n');
@@ -192,7 +192,7 @@ bot.onText(/\/gen/, async (msg) => {
             }
         }
 
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 3; i++) {
             const prompt = createNotRandomPrompt(imageData.fragments, i);
             const style = getRandomElements(imageData.styles, 1)[0];
             const imageUrl = await generateMotivationalImage(prompt, style);
