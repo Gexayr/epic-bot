@@ -4,7 +4,7 @@ import 'dotenv/config';
 import { initializeDatabase } from './database/db.js';
 import { loadPrinciples } from './services/principleService.js';
 import { loadImageData } from './services/imageService.js';
-import { createRandomPrompt, createNotRandomPrompt, generateMotivationalImage, generateMotivationalVideo } from './utils/imageUtils.js';
+import { createRandomVideoPrompt, createNotRandomPrompt, generateMotivationalImage, generateMotivationalVideo } from './utils/imageUtils.js';
 import { getRandomElements, getLocalizedHeader } from './utils/commonUtils.js';
 import { User, PrincipleLog, ImagePrompt } from './database/models/index.js';
 
@@ -79,18 +79,12 @@ cron.schedule('0 5 * * *', async () => {
 
     console.log('🟢 Отправка 3 изображений в 5:00');
 
-    let videoSource = null;
-
     for (let i = 0; i < 3; i++) {
         const prompt = createNotRandomPrompt(imageData.fragments, i);
         const style = getRandomElements(imageData.styles, 1)[0];
         const imageUrl = await generateMotivationalImage(prompt, style);
         if (imageUrl) {
             await ImagePrompt.create({ prompt, style });
-
-            if (!videoSource) {
-                videoSource = { imageBuffer: imageUrl, prompt, style, principleIndex: i };
-            }
 
             for (const user of users) {
                 try {
@@ -126,39 +120,39 @@ cron.schedule('0 5 * * *', async () => {
         }
     }
 
-    if (videoSource) {
-        console.log('🟢 Генерация видео на основе первого изображения');
-        const videoBuffer = await generateMotivationalVideo(videoSource.prompt, videoSource.imageBuffer, videoSource.style);
-        if (videoBuffer) {
-            for (const user of users) {
-                try {
-                    const userLanguage = user.lang || 'en';
-                    const principle = shuffledPrinciples[userLanguage][videoSource.principleIndex];
-                    await bot.sendVideo(user.chat_id, videoBuffer, {
-                        caption: `✅ ${principle}`
-                    });
-                    console.log(`✅ Отправлено видео пользователю ${user.chat_id}`);
-                } catch (err) {
-                    console.error(`❌ Ошибка отправки видео пользователю ${user.chat_id}:`, err.message);
-                    if (err.response && err.response.statusCode === 403) {
-                        console.log(`Пользователь ${user.chat_id} заблокировал бота. Деактивация.`);
-                        await User.update({ is_active: false }, { where: { chat_id: user.chat_id } });
-                    }
+    console.log('🟢 Генерация видео (text-to-video)');
+    const videoPrompt = createRandomVideoPrompt(imageData.fragments);
+    const videoStyle = getRandomElements(imageData.styles, 1)[0];
+    const videoBuffer = await generateMotivationalVideo(videoPrompt, videoStyle);
+    if (videoBuffer) {
+        for (const user of users) {
+            try {
+                const userLanguage = user.lang || 'en';
+                const principle = shuffledPrinciples[userLanguage][0];
+                await bot.sendVideo(user.chat_id, videoBuffer, {
+                    caption: `✅ ${principle}`
+                });
+                console.log(`✅ Отправлено видео пользователю ${user.chat_id}`);
+            } catch (err) {
+                console.error(`❌ Ошибка отправки видео пользователю ${user.chat_id}:`, err.message);
+                if (err.response && err.response.statusCode === 403) {
+                    console.log(`Пользователь ${user.chat_id} заблокировал бота. Деактивация.`);
+                    await User.update({ is_active: false }, { where: { chat_id: user.chat_id } });
                 }
             }
+        }
 
-            for (const lang of languages) {
-                const channelId = channels[lang];
-                if (channelId) {
-                    try {
-                        const principle = shuffledPrinciples[lang][videoSource.principleIndex];
-                        await bot.sendVideo(channelId, videoBuffer, {
-                            caption: `✅ ${principle}`
-                        });
-                        console.log(`✅ Отправлено видео в канал ${channelId} (${lang})`);
-                    } catch (err) {
-                        console.error(`❌ Ошибка отправки видео в канал ${channelId} (${lang}):`, err.message);
-                    }
+        for (const lang of languages) {
+            const channelId = channels[lang];
+            if (channelId) {
+                try {
+                    const principle = shuffledPrinciples[lang][0];
+                    await bot.sendVideo(channelId, videoBuffer, {
+                        caption: `✅ ${principle}`
+                    });
+                    console.log(`✅ Отправлено видео в канал ${channelId} (${lang})`);
+                } catch (err) {
+                    console.error(`❌ Ошибка отправки видео в канал ${channelId} (${lang}):`, err.message);
                 }
             }
         }
@@ -236,8 +230,6 @@ bot.onText(/\/gen/, async (msg) => {
             }
         }
 
-        let videoSource = null;
-
         for (let i = 0; i < 3; i++) {
             const prompt = createNotRandomPrompt(imageData.fragments, i);
             const style = getRandomElements(imageData.styles, 1)[0];
@@ -246,13 +238,6 @@ bot.onText(/\/gen/, async (msg) => {
                 await ImagePrompt.create({ prompt, style });
                 const userLanguage = lang || 'en';
                 const principle = shuffledPrinciples[userLanguage][i];
-
-                if (!videoSource) {
-                    videoSource = { imageBuffer: imageUrl, prompt, style, principle, channelPrinciples: {} };
-                    for (const l of languages) {
-                        videoSource.channelPrinciples[l] = shuffledPrinciples[l][i];
-                    }
-                }
 
                 try {
                     await bot.sendPhoto(chatId, imageUrl, {
@@ -279,29 +264,30 @@ bot.onText(/\/gen/, async (msg) => {
             }
         }
 
-        if (videoSource) {
-            console.log('🟢 Генерация видео на основе первого изображения');
-            const videoBuffer = await generateMotivationalVideo(videoSource.prompt, videoSource.imageBuffer, videoSource.style);
-            if (videoBuffer) {
-                try {
-                    await bot.sendVideo(chatId, videoBuffer, {
-                        caption: `✅ ${videoSource.principle}`
-                    });
-                } catch (err) {
-                    console.error(`❌ Ошибка отправки видео пользователю:`, err.message);
-                }
+        console.log('🟢 Генерация видео (text-to-video)');
+        const videoPrompt = createRandomVideoPrompt(imageData.fragments);
+        const videoStyle = getRandomElements(imageData.styles, 1)[0];
+        const videoBuffer = await generateMotivationalVideo(videoPrompt, videoStyle);
+        if (videoBuffer) {
+            try {
+                const userLanguage = lang || 'en';
+                await bot.sendVideo(chatId, videoBuffer, {
+                    caption: `✅ ${shuffledPrinciples[userLanguage][0]}`
+                });
+            } catch (err) {
+                console.error(`❌ Ошибка отправки видео пользователю:`, err.message);
+            }
 
-                for (const lang of languages) {
-                    const channelId = channels[lang];
-                    if (channelId) {
-                        try {
-                            await bot.sendVideo(channelId, videoBuffer, {
-                                caption: `✅ ${videoSource.channelPrinciples[lang]}`
-                            });
-                            console.log(`✅ Отправлено видео в канал ${channelId} (${lang})`);
-                        } catch (err) {
-                            console.error(`❌ Ошибка отправки видео в канал ${channelId} (${lang}):`, err.message);
-                        }
+            for (const lang of languages) {
+                const channelId = channels[lang];
+                if (channelId) {
+                    try {
+                        await bot.sendVideo(channelId, videoBuffer, {
+                            caption: `✅ ${shuffledPrinciples[lang][0]}`
+                        });
+                        console.log(`✅ Отправлено видео в канал ${channelId} (${lang})`);
+                    } catch (err) {
+                        console.error(`❌ Ошибка отправки видео в канал ${channelId} (${lang}):`, err.message);
                     }
                 }
             }

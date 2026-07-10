@@ -18,8 +18,8 @@ const PIXVERSE_IMAGE_MODEL = process.env.PIXVERSE_IMAGE_MODEL || 'gemini-3.1-fla
 
 // PixVerse prices text-to-video and image-to-video identically (same per-second rate,
 // driven only by model/resolution/duration/audio) - see docs.platform.pixverse.ai/model-pricing.
-// We use image-to-video anyway since it reuses an image we already generated that day
-// at no extra credit cost, instead of spending a separate T2V generation on a new scene.
+// We use text-to-video since the cost is the same either way, and it's simpler than
+// wiring the day's image through as an I2V source.
 const PIXVERSE_VIDEO_TIMEOUT_SEC = parseInt(process.env.PIXVERSE_VIDEO_TIMEOUT_SEC || '600', 10);
 const PIXVERSE_VIDEO_MODEL = process.env.PIXVERSE_VIDEO_MODEL || 'v6';
 // 360p is v6's cheapest quality tier (~4-6 credits/sec no-audio). At the default 1:1
@@ -34,6 +34,33 @@ function createRandomPrompt(fragments) {
     const randomAction = fragments[Math.floor(Math.random() * fragments.length)].action;
     const randomSetting = fragments[Math.floor(Math.random() * fragments.length)].setting;
     return `${randomSubject} ${randomAction} ${randomSetting}, vibrant colors, uplifting mood, cinematic lighting, epic composition`;
+}
+
+// Camera-movement and atmospheric-motion keywords - a static image prompt like
+// createRandomPrompt() reads as a frozen frame when handed to a T2V model, so video
+// prompts need explicit motion cues or PixVerse tends to render near-static clips.
+const VIDEO_CAMERA_MOVEMENTS = [
+    'dynamic tracking shot',
+    'slow cinematic drone flyover',
+    'slow push-in zoom',
+    'wide pan across the horizon',
+    'low-angle tilt upwards'
+];
+
+const VIDEO_ATMOSPHERIC_MOTION = [
+    'slow-motion particles floating in the air',
+    'swirling mist and dynamic smoke effects',
+    'time-lapse cloud movement',
+    'shimmering light leaks and lens flares'
+];
+
+function createRandomVideoPrompt(fragments) {
+    const randomSubject = fragments[Math.floor(Math.random() * fragments.length)].subject;
+    const randomAction = fragments[Math.floor(Math.random() * fragments.length)].action;
+    const randomSetting = fragments[Math.floor(Math.random() * fragments.length)].setting;
+    const cameraMovement = VIDEO_CAMERA_MOVEMENTS[Math.floor(Math.random() * VIDEO_CAMERA_MOVEMENTS.length)];
+    const atmosphericMotion = VIDEO_ATMOSPHERIC_MOTION[Math.floor(Math.random() * VIDEO_ATMOSPHERIC_MOTION.length)];
+    return `${randomSubject} ${randomAction} ${randomSetting}, vibrant colors, uplifting mood, cinematic lighting, epic composition, ${cameraMovement}, ${atmosphericMotion}`;
 }
 
 function createNotRandomPrompt(fragments, index) {
@@ -171,25 +198,21 @@ async function generateMotivationalImage(prompt, style) {
     }
 }
 
-// --- PixVerse CLI image-to-video generation ---
+// --- PixVerse CLI text-to-video generation ---
 //
-// Takes an already-generated motivational image (Buffer) and animates it,
-// reusing the same prompt/style used for the image so the motion matches
-// the scene instead of paying for a second, unrelated generation.
-async function generateMotivationalVideo(prompt, imageBuffer, style) {
-    const fullPrompt = `${style ? `${prompt}, style: ${style}` : prompt}, slow cinematic camera movement, gentle motion, uplifting mood`;
+// T2V and I2V are priced identically on PixVerse, so this generates its own
+// scene straight from a prompt instead of depending on an already-generated
+// image. Expects a prompt built by createRandomVideoPrompt(), which (unlike
+// the image prompt builders) bakes in camera-movement/atmospheric-motion
+// keywords - without those a T2V model tends to render a near-static clip.
+async function generateMotivationalVideo(prompt, style) {
+    const fullPrompt = style ? `${prompt}, style: ${style}` : prompt;
 
-    let inputTmpDir;
     let outputTmpDir;
     try {
-        inputTmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pixverse-video-in-'));
-        const inputImagePath = path.join(inputTmpDir, 'source.png');
-        await fs.writeFile(inputImagePath, imageBuffer);
-
         const args = [
             'create', 'video',
             '--prompt', fullPrompt,
-            '--image', inputImagePath,
             '--model', PIXVERSE_VIDEO_MODEL,
             '--quality', PIXVERSE_VIDEO_QUALITY,
             '--duration', PIXVERSE_VIDEO_DURATION,
@@ -243,9 +266,8 @@ async function generateMotivationalVideo(prompt, imageBuffer, style) {
         }
         return null;
     } finally {
-        if (inputTmpDir) fs.rm(inputTmpDir, { recursive: true, force: true }).catch(() => {});
         if (outputTmpDir) fs.rm(outputTmpDir, { recursive: true, force: true }).catch(() => {});
     }
 }
 
-export { createRandomPrompt, createNotRandomPrompt, generateMotivationalImage, generateMotivationalVideo };
+export { createRandomPrompt, createRandomVideoPrompt, createNotRandomPrompt, generateMotivationalImage, generateMotivationalVideo };
