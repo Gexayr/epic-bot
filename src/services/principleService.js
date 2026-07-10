@@ -5,9 +5,14 @@ const prompt = `Provide 10 inspiring and motivational principles for men, or quo
 Each should be presented in three languages: English, Russian, and Armenian.
 The principles should be similar in style and length to these examples:
 - "Never stop evolving; a wise man is a lifelong student of life."
+- "Honor guides every action, even unseen."
 - "Use your power to protect the vulnerable and empower the weak."
+- "Serve others before seeking personal glory."
 - "Don’t seek meaning externally — build it yourself."
+- "Discipline builds strength beyond talent."
 - "Define yourself by your own values, not by the expectations of the world."
+- "Courage means acting despite real fear."
+- "Integrity defines you more than victories."
 
 Return the result STRICTLY as a JSON object with this structure:
 {
